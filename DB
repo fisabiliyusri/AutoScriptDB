@@ -15,23 +15,17 @@
 MyScriptName='JohnFordTV-Premium Script'
 
 # OpenSSH Ports
-SSH_Port1='22'
-SSH_Port2='226'
 
 # Your SSH Banner
-SSH_Banner='https://raw.githubusercontent.com/johndesu090/AutoScriptDB/master/Files/Plugins/banner'
 
 # Dropbear Ports
-Dropbear_Port1='445'
-Dropbear_Port2='442'
+
 
 # Stunnel Ports
-Stunnel_Port1='443' # through Dropbear
-Stunnel_Port2='444' # through OpenSSH
 
 # OpenVPN Ports
-OpenVPN_TCP_Port='110'
-OpenVPN_UDP_Port='25222'
+OpenVPN_TCP_Port='56969'
+OpenVPN_UDP_Port='1945'
 
 # Privoxy Ports
 Privoxy_Port1='3356'
@@ -45,9 +39,6 @@ Squid_Port3='60000'
 # OpenVPN Config Download Port
 OvpnDownload_Port='85' # Before changing this value, please read this document. It contains all unsafe ports for Google Chrome Browser, please read from line #23 to line #89: https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master/net/base/port_util.cc
 
-# Server local time
-MyVPS_Time='Asia/Manila'
-#############################
 
 
 #############################
@@ -112,134 +103,6 @@ function InstWebmin(){
  systemctl restart webmin
 }
 
-function InstSSH(){
- # Removing some duplicated sshd server configs
- rm -f /etc/ssh/sshd_config*
- 
- # Creating a SSH server config using cat eof tricks
- cat <<'MySSHConfig' > /etc/ssh/sshd_config
-# My OpenSSH Server config
-Port myPORT1
-Port myPORT2
-AddressFamily inet
-ListenAddress 0.0.0.0
-HostKey /etc/ssh/ssh_host_rsa_key
-HostKey /etc/ssh/ssh_host_ecdsa_key
-HostKey /etc/ssh/ssh_host_ed25519_key
-PermitRootLogin yes
-MaxSessions 1024
-PubkeyAuthentication yes
-PasswordAuthentication yes
-PermitEmptyPasswords no
-ChallengeResponseAuthentication no
-UsePAM yes
-X11Forwarding yes
-PrintMotd no
-ClientAliveInterval 240
-ClientAliveCountMax 2
-UseDNS no
-Banner /etc/banner
-AcceptEnv LANG LC_*
-Subsystem   sftp  /usr/lib/openssh/sftp-server
-MySSHConfig
-
- # Now we'll put our ssh ports inside of sshd_config
- sed -i "s|myPORT1|$SSH_Port1|g" /etc/ssh/sshd_config
- sed -i "s|myPORT2|$SSH_Port2|g" /etc/ssh/sshd_config
-
- # Download our SSH Banner
- rm -f /etc/banner
- wget -qO /etc/banner "$SSH_Banner"
- dos2unix -q /etc/banner
-
- # My workaround code to remove `BAD Password error` from passwd command, it will fix password-related error on their ssh accounts.
- sed -i '/password\s*requisite\s*pam_cracklib.s.*/d' /etc/pam.d/common-password
- sed -i 's/use_authtok //g' /etc/pam.d/common-password
-
- # Some command to identify null shells when you tunnel through SSH or using Stunnel, it will fix user/pass authentication error on HTTP Injector, KPN Tunnel, eProxy, SVI, HTTP Proxy Injector etc ssh/ssl tunneling apps.
- sed -i '/\/bin\/false/d' /etc/shells
- sed -i '/\/usr\/sbin\/nologin/d' /etc/shells
- echo '/bin/false' >> /etc/shells
- echo '/usr/sbin/nologin' >> /etc/shells
- 
- # Restarting openssh service
- systemctl restart ssh
- 
- # Removing some duplicate config file
- rm -rf /etc/default/dropbear*
- 
- # creating dropbear config using cat eof tricks
- cat <<'MyDropbear' > /etc/default/dropbear
-# My Dropbear Config
-NO_START=0
-DROPBEAR_PORT=PORT01
-DROPBEAR_EXTRA_ARGS="-p PORT02"
-DROPBEAR_BANNER="/etc/banner"
-DROPBEAR_RSAKEY="/etc/dropbear/dropbear_rsa_host_key"
-DROPBEAR_DSSKEY="/etc/dropbear/dropbear_dss_host_key"
-DROPBEAR_ECDSAKEY="/etc/dropbear/dropbear_ecdsa_host_key"
-DROPBEAR_RECEIVE_WINDOW=65536
-MyDropbear
-
- # Now changing our desired dropbear ports
- sed -i "s|PORT01|$Dropbear_Port1|g" /etc/default/dropbear
- sed -i "s|PORT02|$Dropbear_Port2|g" /etc/default/dropbear
- 
- # Restarting dropbear service
- systemctl restart dropbear
-}
-
-function InsStunnel(){
- StunnelDir=$(ls /etc/default | grep stunnel | head -n1)
-
- # Creating stunnel startup config using cat eof tricks
-cat <<'MyStunnelD' > /etc/default/$StunnelDir
-# My Stunnel Config
-ENABLED=1
-FILES="/etc/stunnel/*.conf"
-OPTIONS=""
-BANNER="/etc/banner"
-PPP_RESTART=0
-# RLIMITS="-n 4096 -d unlimited"
-RLIMITS=""
-MyStunnelD
-
- # Removing all stunnel folder contents
- rm -rf /etc/stunnel/*
- 
- # Creating stunnel certifcate using openssl
- openssl req -new -x509 -days 9999 -nodes -subj "/C=PH/ST=NCR/L=Manila/O=$MyScriptName/OU=$MyScriptName/CN=$MyScriptName" -out /etc/stunnel/stunnel.pem -keyout /etc/stunnel/stunnel.pem &> /dev/null
-##  > /dev/null 2>&1
-
- # Creating stunnel server config
- cat <<'MyStunnelC' > /etc/stunnel/stunnel.conf
-# My Stunnel Config
-pid = /var/run/stunnel.pid
-cert = /etc/stunnel/stunnel.pem
-client = no
-socket = l:TCP_NODELAY=1
-socket = r:TCP_NODELAY=1
-TIMEOUTclose = 0
-
-[dropbear]
-accept = Stunnel_Port1
-connect = 127.0.0.1:dropbear_port_c
-
-[openssh]
-accept = Stunnel_Port2
-connect = 127.0.0.1:openssh_port_c
-MyStunnelC
-
- # setting stunnel ports
- sed -i "s|Stunnel_Port1|$Stunnel_Port1|g" /etc/stunnel/stunnel.conf
- sed -i "s|dropbear_port_c|$(netstat -tlnp | grep -i dropbear | awk '{print $4}' | cut -d: -f2 | xargs | awk '{print $2}' | head -n1)|g" /etc/stunnel/stunnel.conf
- sed -i "s|Stunnel_Port2|$Stunnel_Port2|g" /etc/stunnel/stunnel.conf
- sed -i "s|openssh_port_c|$(netstat -tlnp | grep -i ssh | awk '{print $4}' | cut -d: -f2 | xargs | awk '{print $2}' | head -n1)|g" /etc/stunnel/stunnel.conf
-
- # Restarting stunnel service
- systemctl restart $StunnelDir
-
-}
 
 function InsOpenVPN(){
  # Checking if openvpn folder is accidentally deleted or purged
@@ -1141,21 +1004,6 @@ function ScriptMessage(){
  echo -e ""
 }
 
-function InstBadVPN(){
- # Pull BadVPN Binary 64bit or 32bit
-if [ "$(getconf LONG_BIT)" == "64" ]; then
- wget -O /usr/bin/badvpn-udpgw "https://github.com/johndesu090/AutoScriptDB/raw/master/Files/Plugins/badvpn-udpgw64"
-else
- wget -O /usr/bin/badvpn-udpgw "https://github.com/johndesu090/AutoScriptDB/raw/master/Files/Plugins/badvpn-udpgw"
-fi
- # Set BadVPN to Start on Boot via .profile
- sed -i '$ i\screen -AmdS badvpn badvpn-udpgw --listen-addr 127.0.0.1:7300' /root/.profile
- # Change Permission to make it Executable
- chmod +x /usr/bin/badvpn-udpgw
- # Start BadVPN via Screen
- screen -AmdS badvpn badvpn-udpgw --listen-addr 127.0.0.1:7300
-}
-
 
 #############################################
 #############################################
@@ -1247,11 +1095,6 @@ fi
  cd ~
  
   # Running screenfetch
- wget -O /usr/bin/screenfetch "https://raw.githubusercontent.com/johndesu090/AutoScriptDB/master/Files/Plugins/screenfetch"
- chmod +x /usr/bin/screenfetch
- echo "/bin/bash /etc/openvpn/openvpn.bash" >> .profile
- echo "clear" >> .profile
- echo "screenfetch" >> .profile
 
  
  # Showing script's banner message
@@ -1274,9 +1117,6 @@ echo "   - IPv6        : [OFF]"  | tee -a log-install.txt
 echo ""  | tee -a log-install.txt
 echo "Application & Port Information"  | tee -a log-install.txt
 echo "   - OpenVPN		: TCP $OpenVPN_TCP_Port UDP $OpenVPN_UDP_Port "  | tee -a log-install.txt
-echo "   - OpenSSH		: $SSH_Port1, $SSH_Port2 "  | tee -a log-install.txt
-echo "   - Dropbear		: $Dropbear_Port1, $Dropbear_Port2"  | tee -a log-install.txt
-echo "   - Stunnel/SSL 	: $Stunnel_Port1, $Stunnel_Port2"  | tee -a log-install.txt
 echo "   - Squid Proxy	: $Squid_Port1 , $Squid_Port2 (limit to IP Server)"  | tee -a log-install.txt
 echo "   - Squid ELITE	: $Squid_Port3 (limit to IP Server)"  | tee -a log-install.txt
 echo "   - Privoxy		: $Privoxy_Port1 , $Privoxy_Port2 (limit to IP Server)"  | tee -a log-install.txt
