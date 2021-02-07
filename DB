@@ -779,17 +779,6 @@ function ip_address(){
 } 
 IPADDR="$(ip_address)"
 
- # Creating directory for startup script
- rm -rf /etc/johnfordtv
- mkdir -p /etc/johnfordtv
- chmod -R 755 /etc/johnfordtv
- 
- # Creating startup script using cat eof tricks
- cat <<'EOFSH' > /etc/johnfordtv/startup.sh
-#!/bin/bash
-# Setting server local time
-ln -fs /usr/share/zoneinfo/MyVPS_Time /etc/localtime
-
 # Prevent DOS-like UI when installing using APT (Disabling APT interactive dialog)
 export DEBIAN_FRONTEND=noninteractive
 
@@ -800,45 +789,12 @@ iptables -A INPUT -s $(wget -4qO- http://ipinfo.io/ip) -p tcp -m multiport --dpo
 /bin/bash /etc/openvpn/openvpn.bash
 
 exit 0
-EOFSH
- chmod +x /etc/johnfordtv/startup.sh
  
- # Setting server local time every time this machine reboots
- sed -i "s|MyVPS_Time|$MyVPS_Time|g" /etc/johnfordtv/startup.sh
-
- # 
- rm -rf /etc/sysctl.d/99*
-
- # Setting our startup script to run every machine boots 
- cat <<'FordServ' > /etc/systemd/system/johnfordtv.service
-[Unit]
-Description=JohnfordTV Startup Script
-Before=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/bin/bash /etc/johnfordtv/startup.sh
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-FordServ
- chmod +x /etc/systemd/system/johnfordtv.service
- systemctl daemon-reload
- systemctl start johnfordtv
- systemctl enable johnfordtv &> /dev/null
- systemctl enable fail2ban &> /dev/null
- systemctl start fail2ban &> /dev/null
-
- # Rebooting cron service
- systemctl restart cron
- systemctl enable cron
  
 }
  #Create Admin
  useradd -m admin
- echo "admin:itangsagli" | chpasswd
+ echo "admin:zegar" | chpasswd
 
 function ConfMenu(){
 echo -e " Creating Menu scripts.."
@@ -913,26 +869,6 @@ fi
  
  # Configuring Nginx OVPN config download site
  OvpnConfigs
-
- # Some assistance and startup scripts
- ConfStartup
-
- ## DNS maker plugin for SUN users(for vps script usage only)
- wget -qO dnsmaker "https://raw.githubusercontent.com/Bonveio/BonvScripts/master/DNSMaster/debian"
- chmod +x dnsmaker
- ./dnsmaker
- rm -rf dnsmaker
- sed -i "s|http-proxy $IPADDR|http-proxy $(cat /tmp/abonv_mydns)|g" /var/www/openvpn/suntu-dns.ovpn
- sed -i "s|remote $IPADDR|remote $(cat /tmp/abonv_mydns)|g" /var/www/openvpn/sun-tuudp.ovpn
- curl -4sSL "$(cat /tmp/abonv_mydns_domain)" &> /dev/null
- mv /tmp/abonv_mydns /etc/bonveio/my_domain_name
- mv /tmp/abonv_mydns_id /etc/bonveio/my_domain_id
- rm -rf /tmp/abonv*
-
- 
- # Setting server local time
- ln -fs /usr/share/zoneinfo/$MyVPS_Time /etc/localtime
- 
  clear
  cd ~
  
