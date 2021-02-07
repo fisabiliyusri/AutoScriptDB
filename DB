@@ -10,18 +10,13 @@ MyScriptName='SL-Premium Script'
 OpenVPN_TCP_Port='56969'
 OpenVPN_UDP_Port='1945'
 
-# Privoxy Ports
-Privoxy_Port1='3356'
-Privoxy_Port2='8086'
-
 # Squid Ports
-Squid_Port1='3355'
-Squid_Port2='8085'
+Squid_Port1='8080'
+Squid_Port2='3128'
 Squid_Port3='60000'
 
 # OpenVPN Config Download Port
 OvpnDownload_Port='85' # Before changing this value, please read this document. It contains all unsafe ports for Google Chrome Browser, please read from line #23 to line #89: https://chromium.googlesource.com/chromium/src.git/+/refs/heads/master/net/base/port_util.cc
-
 
 
 #############################
@@ -196,11 +191,11 @@ Certificate:
         Version: 3 (0x2)
         Serial Number: 1 (0x1)
     Signature Algorithm: sha256WithRSAEncryption
-        Issuer: C=PH, ST=Tarlac, L=Concepcion, O=JohnFordTV, OU=JohnFordTV, CN=DebianVPN/name=John Ford Mangiliman/emailAddress=admin@johnfordtv.me
+        Issuer: C=ID, ST=PlanetBumi, L=Crotdidalam, O=SL, OU=SL, CN=SLVPN/name=SulaimanL/emailAddress=facebook.com/sulaiman.xl
         Validity
             Not Before: Nov 25 08:06:59 2019 GMT
             Not After : Nov 22 08:06:59 2029 GMT
-        Subject: C=PH, ST=Tarlac, L=Concepcion, O=JohnFordTV, OU=JohnFordTV, CN=DebianVPN/name=John Ford Mangiliman/emailAddress=admin@johnfordtv.me
+        Subject: C=ID, ST=PlanetBumi, L=Crotdidalam, O=SL, OU=SL, CN=SLVPN/name=SulaimanL/emailAddress=facebook.com/sulaiman.xl
         Subject Public Key Info:
             Public Key Algorithm: rsaEncryption
                 Public-Key: (2048 bit)
@@ -235,7 +230,7 @@ Certificate:
                 50:31:04:C4:7A:47:C1:DA:46:CC:77:38:DE:1C:63:10:40:C3:80:22
             X509v3 Authority Key Identifier:
                 keyid:2D:71:9E:0D:00:4B:5C:23:C8:77:41:77:AF:FE:7C:14:30:A6:8C:2E
-                DirName:/C=PH/ST=Tarlac/L=Concepcion/O=JohnFordTV/OU=JohnFordTV/CN=DebianVPN/name=John Ford Mangiliman/emailAddress=admin@johnfordtv.me
+                DirName:/C=ID/ST=PlanetBumi/L=Crotdidalam/O=SL/OU=SL/CN=SLVPN/name=SulaimanL/emailAddress=facebook.com/sulaiman.xl
                 serial:8C:5B:0D:CB:E1:EA:F3:C4
 
             X509v3 Extended Key Usage:
@@ -804,8 +799,6 @@ iptables -A INPUT -s $(wget -4qO- http://ipinfo.io/ip) -p tcp -m multiport --dpo
 # Allowing OpenVPN to Forward traffic
 /bin/bash /etc/openvpn/openvpn.bash
 
-# Deleting Expired SSH Accounts
-/usr/local/sbin/delete_expired &> /dev/null
 exit 0
 EOFSH
  chmod +x /etc/johnfordtv/startup.sh
